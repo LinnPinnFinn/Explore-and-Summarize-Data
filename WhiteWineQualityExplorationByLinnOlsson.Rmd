@@ -1,0 +1,796 @@
+---
+output: html_document
+---
+White Wine Quality Exploration by Linn Olsson
+========================================================
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, packages}
+library(ggplot2)
+library(knitr)
+library(dplyr)
+library(reshape2)
+library(gridExtra)
+library(corrplot)
+library(RColorBrewer)
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, Load_the_Data}
+# Load the Data
+setwd('/Users/linn/Downloads/UDACITY/DAND - Term 2/2. EXPLORATORY DATA ANALYSIS WITH R/PROJECT - Explore and Summarize Data')
+white_wine <- read.csv('wineQualityWhites.csv')
+# Remove column X (generic sequence number)
+white_wine$X <- NULL
+```
+
+# Introduction
+This project aims to explore which chemical properties influence the quality of White wines. The data set used for this project contains 4898 instances of different variants of the Portuguese "Vinho Verde" wine and can be downloaded [here](https://s3.amazonaws.com/udacity-hosted-downloads/ud651/wineQualityWhites.csv).
+
+12 variables are included in the data set, where 11 of them are quantifying the chemical properties of each wine and one variable contains a rating between 0 (very bad) and 10 (very excellent) on the quality of the wine. This quality score is the median evaluation of at least 3 wine experts.
+
+For more information on the data set, read [this](https://s3.amazonaws.com/udacity-hosted-downloads/ud651/wineQualityInfo.txt) text file.
+
+# Univariate Plots Section
+
+##### Variables included in the data set:
+```{r echo=FALSE, message=FALSE, warning=FALSE, Variables}
+names(white_wine)
+```
+<br/>
+
+##### Description of the variables:
+**Input variables (based on physicochemical tests):**<br/>
+1. **fixed acidity**: most acids involved with wine or (are?) fixed or nonvolatile (do not evaporate readily)<br/>
+2. **volatile acidity**: the amount of acetic acid in wine, which at too high of levels can lead to an unpleasant, vinegar taste<br/>
+3. **citric acid**: found in small quantities, citric acid can add 'freshness' and flavor to wines<br/>
+4. **residual sugar**: the amount of sugar remaining after fermentation stops, it's rare to find wines with less than 1 gram/liter and wines with greater than 45 grams/liter are considered sweet<br/>
+5. **chlorides**: the amount of salt in the wine<br/>
+6. **free sulfur dioxide**: the free form of SO2 exists in equilibrium between molecular SO2 (as a dissolved gas) and bisulfite ion; it prevents microbial growth and the oxidation of wine<br/>
+7. **total sulfur dioxide**: amount of free and bound forms of S02; in low concentrations, SO2 is mostly undetectable in wine, but at free SO2 concentrations over 50 ppm, SO2 becomes evident in the nose and taste of wine<br/>
+8. **density**: the density of water (wine?) is close to that of water depending on the percent alcohol and sugar content<br/>
+9. **pH**: describes how acidic or basic a wine is on a scale from 0 (very acidic) to 14 (very basic); most wines are between 3-4 on the pH scale<br/>
+10. **sulphates**: a wine additive which can contribute to sulfur dioxide gas (S02) levels, wich acts as an antimicrobial and antioxidant<br/>
+11. **alcohol**: the percent alcohol content of the wine
+
+**Output variable (based on sensory data):**<br/>
+12. **quality** (score between 0 and 10)
+<br/>
+<br/>
+
+Information on the variables was found [here](https://s3.amazonaws.com/udacity-hosted-downloads/ud651/wineQualityInfo.txt).
+<br/>
+<br/>
+
+##### Structure of the variables:
+```{r echo=FALSE, message=FALSE, warning=FALSE, Structure}
+str(white_wine)
+```
+The data set consists of 4898 observations and 12 variables. All variables are numberical and *quality* is an integer specifically. The variables *quality*, *free.sulfur.dioxide* and *total.sulfur.dioxide* appear to be discrete and the rest appear to be continuous. This makes sense for *quality* which is scale question, but for *free.sulfur.dioxide* and *total.sulfur.dioxide* it seems they should be continuous like the rest.
+<br/>
+<br/>
+
+##### Summary of the variables:
+```{r echo=FALSE, message=FALSE, warning=FALSE, Summary}
+summary(white_wine)
+```
+The summary shows the distribution of the data within a variable. The 1st to 3d quartiles illustrate the range where most of the data fall within and a much lower min value than the value of the 1st quartile or a much higher max value than the value of the 3d quartile indicates that there are outliers in the data. *citric.acid* seems to have values of zero.
+<br/>
+<br/>
+
+##### Table of *citric.acid*:
+```{r echo=FALSE, message=FALSE, warning=FALSE, Table_citric_acid}
+table(white_wine$citric.acid)
+```
+This table of *citric.acid* shows that there are 19 observations with a value of 0 for this variable. Having a value of 0 might be correct or it might be due to a data entry or rounding error.
+<br/>
+<br/>
+
+##### Histogram of *quality* adjusted for *citric.acid*:
+```{r echo=FALSE, message=FALSE, warning=FALSE, Histogram_citric_acid}
+# Create subset of data where all values of 0 for citric acid have been removed.
+subset_white_wine <- white_wine[white_wine$citric.acid > 0, ]
+# Create hisograms of quality where values of 0 for citric acid are included and excluded respectively.
+p_ca1 <- ggplot(white_wine, aes(quality)) +
+  geom_histogram()
+p_ca2 <- ggplot(subset_white_wine, aes(quality)) +
+  geom_histogram()
+# Use grid.arrange to illustrate the two histograms side by side.
+grid.arrange(p_ca1, p_ca2, ncol = 2)
+```
+<br/>
+To see how the zero values for *citric.acid* might affect the *quality* variable these histograms are a comparison of how *quality* might change. The histogram to the left includes all observations and the histogram on the right includes only observations where *citric.acid* is greater than 0. The distribution in *quality* does not seem to be affected by these zero values.
+<br/>
+<br/>
+
+##### Boxplot of variables:
+```{r echo=FALSE, message=FALSE, warning=FALSE, Boxplot_summary}
+# Use melt function to take data in wide format to stack all columns into a single column of data.
+white_wine_meltdata <- melt(white_wine)
+# Create boxplot of the "melted" data and use facet wrap to show each variable separately. Add stat_boxplot 'errorbar' to add whisker ends to boxplot.
+ggplot(white_wine_meltdata, aes(x = variable, y = value)) + 
+  stat_boxplot(geom ='errorbar') + 
+  geom_boxplot() +
+  facet_wrap(~variable, scale = "free")
+```
+<br/>
+A boxplot can help to illustrate the variability in the data. It seems only the variable *alcohol* has no outliers at all, this boxplot shape could indicate that the data is distributed into two "lumps" with very few data points in between.
+<br/>
+<br/>
+
+##### Histogram of variables:
+```{r echo=FALSE, message=FALSE, warning=FALSE, Histogram_summary}
+# Create histogram of the "melted" data and use facet wrap to show each variable separately.
+ggplot(white_wine_meltdata, aes(x = value)) +
+  geom_histogram() +
+  facet_wrap(~variable, scale = "free")
+```
+<br/>
+Another way to illustrate the distribution of the data is to create a histogram. Here we can see that the distribution of the data in *alcohol* is not distributed in two "lumps", there are many data points in the middle. Most variables seem to have a somewhat normal distribution or a slightly positive skew (long tail). The variable *quality* is not continuous so the data points are centered around whole numbers so the histogram almost looks like a bar chart. The outliers in some charts makes it harder to see the distribution.
+
+##### Log10 histogram of variables:
+```{r echo=FALSE, message=FALSE, warning=FALSE, Log10_histogram}
+# Tranfrom data by log10 and create histogram of all variables.
+ggplot(white_wine_meltdata, aes(x = value)) +
+  geom_histogram() +
+  scale_x_log10() +
+  facet_wrap(~variable, scale = "free")
+```
+<br/>
+To better see how the variables with outliers in the data are distributed we can transform the data by log10 for example. The variables *chlorides*, *free.sulfur.dioxide* and *sulphates* appear to have a log-normal distribution meanwhile *residual.sugar* seems to have a bimodal distribution, *alcohol* a mutlimodal distribution and for *density* it is still hard to see the distribution because of the outliers.
+<br/>
+<br/>
+
+##### Limiting the range for *density*:
+```{r echo=FALSE, message=FALSE, warning=FALSE, Limit_range_density_histogram}
+# Subset the data by adding limits to the range shown in the histogram to better see the distribution pattern.
+ggplot(white_wine, aes(density)) +
+  geom_histogram() +
+  scale_x_continuous(limits = c(0.9871, 1.005))
+```
+<br/>
+By limiting the range included in the histogram for *density*, it is easier to see the shape of the data, which seems to have a somewhat normal distribution.
+<br/>
+<br/>
+
+##### Characteristics of *quality*:
+```{r echo=FALSE, message=FALSE, warning=FALSE, Histogram_quality}
+ggplot(white_wine, aes(quality)) +
+  geom_histogram()
+```
+<br/>
+*quality* is the main variable of interest that this project aims to investigate. The shape of the data in *quality* seems to follow a normal distribution curve.
+<br/>
+<br/>
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, Summary_quality}
+summary(white_wine$quality)
+```
+No wine in the data set has a quality score lower than 3 or higher than 9.
+<br/>
+<br/>
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, Table_quality}
+table(white_wine$quality)
+```
+This table of the *quality* variable shows that most wines have a quality score of 5 or 6. Very few wines have a quality score of 3 and 9.
+<br/>
+<br/>
+
+##### Recoding of *quality* groups:
+```{r echo=FALSE, message=FALSE, warning=FALSE, Recode_quality}
+# Create new quality variable with existing quality values
+white_wine$quality_cat <- NA
+
+# Recode quality scores into new groups
+white_wine$quality_cat[white_wine$quality <= 4] <- 4
+white_wine$quality_cat[white_wine$quality == 5] <- 5
+white_wine$quality_cat[white_wine$quality == 6] <- 6
+white_wine$quality_cat[white_wine$quality == 7] <- 7
+white_wine$quality_cat[white_wine$quality >= 8] <- 8
+
+# Add value lables
+white_wine$quality_cat <- ordered(white_wine$quality_cat,
+levels = c(4, 5, 6, 7, 8),
+labels = c("3-4", "5", "6", "7", "8-9"))
+
+table(white_wine$quality_cat)
+```
+<br/>
+The observations for quality score 3 and 9 were very few in the original quality variable and I don't think it's reasonable to compare 5 or 20 data points to hundreds to thousands in the other quality groups. The table above shows the counts for a new quality variable, *quality_cat*, where the quality scores 3 and 4 and 8 and 9 have been combined to one group respectively.
+<br/>
+<br/>
+
+# Univariate Analysis
+
+### What is the structure of your dataset?
+The data set contains 4898 observations of different variants of the Portuguese "Vinho Verde" with 11 variables on the chemical properties of the wine and one variable on the quality of the wine, which is the median value of the quality rating of at least 3 wine experts, with the range of 0 (very bad) to 10 (very excellent).
+
+Other observations:
+Most wines have a quality score of 6, there are no wines in the data set with a quality score of lower than 3 or higher than 9. The median alcohol percent in a wine is 10,4 %, the alcohol percent range in the data set is 8-14,2 %. White wine is highly acidic with a median pH level of 3.18 in the data set.
+<br/>
+<br/>
+
+### What is/are the main feature(s) of interest in your dataset?
+The main feature to investigate in this project is how a White wine is considered high in quality, which chemical properties of a wine might affect how its quality is perceived.
+<br/>
+<br/>
+
+### What other features in the dataset do you think will help support your \
+investigation into your feature(s) of interest?
+According to [*Wine Folly*](https://winefolly.com/review/wine-characteristics/), the 5 basic characteristics of wine are:<br/>
+1. Sweetness<br/>
+2. Acidity<br/>
+3. Tannin<br/>
+4. Alcohol<br/>
+5. Body<br/>
+
+A sweet wine has a higher content of residual sugar in it, and its opposite is a dry wine. However, dry wines can have a hint of sweetness to make them more full-bodied. The data set description states that wines with residual sugar of more than 45 g/l are considered sweet. I want to expolre if the variable *residual.sugar* influences the quality score.
+
+Wines with higher acidity feel ligher-bodied and wines that have less acidity are more rich and round. The variables *fixed.acidity*, *volatile.acidity*, *citric.acid* and *pH* should all be related to the acidity of a wine. It is especially interesting to explore how volatile acidity incluences the quality score, since too high levels of it can give the vine a vinegar taste according to the data set description. Citric acid and its relationship to the quality score of a wine is also interesting because it can add freshness and flavor to a wine.
+
+The characteristics Tannin and Body can't really be related to any of the variables in the data set and will be hard to investigate but the variable *alcohol* and its relationship to the quality scores should be explored. Wines with higher alcohol tend to taste bolder and more oily and wines with lower alcohol tend to taste lighter-bodied, according to Whine Folly.
+
+Furthermore, the variable *free.sulfur.dioxide* should be explored since concentrations of more than 50 ppm in a wine becomes evident in the nose and taste of it, according to the data set description. The variable *chlorides* should also be looked into since the amount of salt in a wine most likely affects how salty it tastes which could also impact the quality score of it.
+<br/>
+<br/>
+
+### Did you create any new variables from existing variables in the dataset?
+I created a new variable called *quality_cat* where I combined the observations with quality score of 3 and 4 and 8 and 9 respectively because quality scores 3 and 9 had so few observations and would be hard to fairly compare to the other scores which had many more observations. The new variable has 5 different quality score groups: 3-4, 5, 6, 7, 8-9.
+<br/>
+<br/>
+
+### Of the features you investigated, were there any unusual distributions? \
+Did you perform any operations on the data to tidy, adjust, or change the form \
+of the data? If so, why did you do this?
+Most variables seem to have a somewhat normal distribution or a slightly positive skew (long tail). I tranformed the data by log10 to make it less skewed, and the variables *chlorides*, *free.sulfur.dioxide* and *sulphates* appear to have log-normal distributions meanwhile *residual.sugar* seems to have a bimodal distribution and *alcohol* a mutlimodal distribution.
+
+I removed column *X* in the data set because this was just a generic sequence number.
+
+The variable *citric.acid* has some zero values so I created a subset excluding these to see if they affected the quality variable in some way. The zero values can be correct since the overall values for citric acid in the data are very low (0-1.66), or they could be due to a data entry or rounding error. Removing the 19 observations with zero values for citric acid didn't seem to affect quality and I decided to keep these in the data set.
+<br/>
+<br/>
+
+# Bivariate Plots Section
+
+##### Correlation matrix of all variables:
+```{r echo=FALSE, message=FALSE, warning=FALSE, Correlation_matrix}
+# Compute correlation matrix with numeric variables
+M <- cor(white_wine[sapply(white_wine, is.numeric)])
+
+# Change font size in this plot specifically
+cex.before <- par("cex")
+par(cex = 0.7)
+
+# Visualise correlation matrix
+corrplot(M, method = "color", type = "upper", order = "hclust",
+         addCoef.col = "black", tl.col="black", tl.srt = 45)
+
+# Chnage back to previous font size for the coming plots
+par(cex = cex.before)
+```
+<br/>
+In this correlation matrix we can see how strongly two variables are linearly related. 
+
+There is a strong to weak positive relationship between *residual.sugar* and *density* (0.84), *free.sulfur.dioxide* and *total.sulfur.dioxide* (0.62), *density* and *total.sulfur.dioxide* (0.53) and *residual.sugar* and *total.sulfur.dioxide* (0.4). This means that when one of the variables gets larger, the other gets larger too.
+
+There is a strong to weak negative relationship between *alcohol* and *density* (-0.78), *alcohol* and *residual.sugar* (-0.45), *alcohol* and *total.sulfur.dioxide* (-0.45), *pH* and *fixed.acidity* (-0.43) and *alcohol* and *chlorides* (-0.36). This is an inverse correlation, as one variable gets larger the other gets smaller.
+
+*quality* has a weak positive relationship with *alcohol* (0.44) and a very weak negative relationship with *density* (-0.31). Other than that, quality doesn't appear to be linearly related to any other variable.
+
+The correlation coefficient for *pH* and *free.sulfur.dioxide* and *total.sulfur.dioxide* respectively is 0 so there seems to be no linear relationship between the variables.
+
+Fixed and volatile acidity are not linearly related as one might have assumed (-0.02).
+<br/>
+<br/>
+
+##### Quality and its relationship to other variables:
+```{r echo=FALSE, message=FALSE, warning=FALSE, Quality_alcohol}
+ggplot(white_wine, aes(x = factor(quality_cat), y = alcohol)) + 
+  geom_boxplot(fill = I('#5FA5CC')) +
+  geom_jitter(position = position_jitter(0.3), alpha = 1/10) +
+  geom_line(aes(group = 1),
+            stat = "summary",
+            fun.y = median,
+            color = "#EC9474",
+            size = 1)
+
+# Create summary split on quality score groups
+tapply(white_wine$alcohol, white_wine$quality_cat, summary)
+```
+<br/>
+To illustrate how each chemical property differs over the quality scores, a graph with boxplots, jitter and a summary line of the mean for each quality score is used for each variable. Levels of *alcohol* has the most obvious pattern of increase with the increase in quality score. Though, levels are high for quality 3-4, with a decrease for quality 5 but then an increase until the highest alcohol level can be seen for quality 8-9.
+<br/>
+<br/>
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, Quality_pH}
+ggplot(white_wine, aes(x = factor(quality_cat), y = pH)) + 
+  geom_boxplot(fill = I('#5FA5CC')) +
+  geom_jitter(position = position_jitter(0.3), alpha = 1/10) +
+  geom_line(aes(group = 1),
+            stat = "summary",
+            fun.y = median,
+            color = "#EC9474",
+            size = 1)
+
+tapply(white_wine$pH, white_wine$quality_cat, summary)
+```
+<br/>
+Levels of *pH* slighly increase the higher the quality score. There is quite a lot of spread in pH within each quality score but it appears that slightly less acidic wines have a higher quality score.
+<br/>
+<br/>
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, Quality_sulphates}
+ggplot(white_wine, aes(x = factor(quality_cat), y = sulphates)) + 
+  geom_boxplot(fill = I('#5FA5CC')) +
+  geom_jitter(position = position_jitter(0.3), alpha = 1/10) +
+  geom_line(aes(group = 1),
+            stat = "summary",
+            fun.y = median,
+            color = "#EC9474",
+            size = 1)
+
+tapply(white_wine$sulphates, white_wine$quality_cat, summary)
+```
+<br/>
+*sulphates* appear to have a decrease for quality 8-9 and the spread appears to be the greatest there as well.
+<br/>
+<br/>
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, Quality_free.sulfur.dioxide}
+ggplot(white_wine, aes(x = factor(quality_cat), y = free.sulfur.dioxide)) + 
+  geom_boxplot(fill = I('#5FA5CC')) +
+  geom_jitter(position = position_jitter(0.3), alpha = 1/10) +
+  geom_line(aes(group = 1),
+            stat = "summary",
+            fun.y = median,
+            color = "#EC9474",
+            size = 1) +
+  scale_y_continuous(breaks = seq(0, 300, by = 25)) +
+  geom_hline(yintercept = 50, color = "#B31B2C", linetype = 2, size = 1)
+
+tapply(white_wine$free.sulfur.dioxide, white_wine$quality_cat, summary)
+```
+<br/>
+*free.sulfur.dioxide* over 50 ppm (mg/dm^3) becomes evident in the nose and taste of wine and levels of it are lower for quality 3-4, but seems to be quite similar over the other quality scores.
+<br/>
+<br/>
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, Quality_density}
+ggplot(white_wine, aes(x = factor(quality_cat), y = density)) + 
+  geom_boxplot(fill = I('#5FA5CC')) +
+  geom_jitter(position = position_jitter(0.3), alpha = 1/10) +
+  geom_line(aes(group = 1),
+            stat = "summary",
+            fun.y = median,
+            color = "#EC9474",
+            size = 1)
+
+tapply(white_wine$density, white_wine$quality_cat, summary)
+```
+<br/>
+*density* has very little spread within a quality score and it appears that higher quality wines have a slightly lower density.
+<br/>
+<br/>
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, Quality_chlorides}
+ggplot(white_wine, aes(x = factor(quality_cat), y = chlorides)) + 
+  geom_boxplot(fill = I('#5FA5CC')) +
+  geom_jitter(position = position_jitter(0.3), alpha = 1/10) +
+  geom_line(aes(group = 1),
+            stat = "summary",
+            fun.y = median,
+            color = "#EC9474",
+            size = 1)
+
+tapply(white_wine$chlorides, white_wine$quality_cat, summary)
+```
+<br/>
+Levels of *chlorides* appear to be decreasing the higer the quality score, which should mean that higher quality wines are less salty in taste.
+<br/>
+<br/>
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, Quality_volatile.acidity}
+ggplot(white_wine, aes(x = factor(quality_cat), y = volatile.acidity)) + 
+  geom_boxplot(fill = I('#5FA5CC')) +
+  geom_jitter(position = position_jitter(0.3), alpha = 1/10) +
+  geom_line(aes(group = 1),
+            stat = "summary",
+            fun.y = median,
+            color = "#EC9474",
+            size = 1)
+
+tapply(white_wine$volatile.acidity, white_wine$quality_cat, summary)
+```
+<br/>
+*volatile.acidity* appears to be higher for quality scores 3-4 and getting less over higher qualities, except for the highest quality 8-9 where it is very slightly increased. Too high levels of volitile acidity could give the wine an unpleasant vinegar taste, so it makes sense that the lowest scored wines have the highest content of volatile acidity. Quality 8-9 has a higher min and lower max value than the rest and seems to be more concentrated around the mean, which might indicate that there needs to be a certain amount of volatile acidity in a wine to be ranked high, but it also can't be too high because of the vinegar taste it can result in. This max might be 0.66 g/l as it's the max value for wines with quality score 8-9.
+<br/>
+<br/>
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, Quality_total.sulfur.dioxide}
+ggplot(white_wine, aes(x = factor(quality_cat), y = total.sulfur.dioxide)) + 
+  geom_boxplot(fill = I('#5FA5CC')) +
+  geom_jitter(position = position_jitter(0.3), alpha = 1/10) +
+  geom_line(aes(group = 1),
+            stat = "summary",
+            fun.y = median,
+            color = "#EC9474",
+            size = 1)
+
+tapply(white_wine$total.sulfur.dioxide, white_wine$quality_cat, summary)
+```
+<br/>
+Levels of *total.sulfur.dioxide* are increased for quality 5 and the decreaes over the quality scores. Quality 8-9 has the highest min value and lowest max value, the total.sulfur.dioxide levels seem to be more concentrated around the mean.
+<br/>
+<br/>
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, Quality_fixed.acidity}
+ggplot(white_wine, aes(x = factor(quality_cat), y = fixed.acidity)) + 
+  geom_boxplot(fill = I('#5FA5CC')) +
+  geom_jitter(position = position_jitter(0.3), alpha = 1/10) +
+  geom_line(aes(group = 1),
+            stat = "summary",
+            fun.y = median,
+            color = "#EC9474",
+            size = 1)
+
+tapply(white_wine$fixed.acidity, white_wine$quality_cat, summary)
+```
+<br/>
+*fixed.acidity* is very slighly higher for quality 3-4.
+<br/>
+<br/>
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, Quality_residual.sugar}
+ggplot(white_wine, aes(x = factor(quality_cat), y = residual.sugar)) + 
+  geom_boxplot(fill = I('#5FA5CC')) +
+  geom_jitter(position = position_jitter(0.3), alpha = 1/10) +
+  geom_line(aes(group = 1),
+            stat = "summary",
+            fun.y = median,
+            color = "#EC9474",
+            size = 1) +
+  scale_y_continuous(breaks = seq(0, 70, by = 15)) +
+  geom_hline(yintercept = 45, color = "#B31B2C", linetype = 2, size = 1)
+
+tapply(white_wine$residual.sugar, white_wine$quality_cat, summary)
+```
+<br/>
+*residual.sugar* is higher for quality score 5 than the others. Residual sugar levels of 45g/dm^3 or higher makes a wine sweet, but in this data set only one wine has a level higher than that and all wines appear to be less sweet with no great difference across quality scores. 
+<br/>
+<br/>
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, Quality_citric.acid}
+ggplot(white_wine, aes(x = factor(quality_cat), y = citric.acid)) + 
+  geom_boxplot(fill = I('#5FA5CC')) +
+  geom_jitter(position = position_jitter(0.3), alpha = 1/10) +
+  geom_line(aes(group = 1),
+            stat = "summary",
+            fun.y = median,
+            color = "#EC9474",
+            size = 1)
+
+tapply(white_wine$citric.acid, white_wine$quality_cat, summary)
+```
+<br/>
+Levels of *citric.acid* are very similar over the different quality scores. Small quantities of citric acid adds freshness and flavor to the wine, but the levels in these wines do not seem to have affected the difference in quality scores very much.
+<br/>
+<br/>
+
+##### Alcohol and its linear relationships:
+```{r echo=FALSE, message=FALSE, warning=FALSE, Scatter_plots_alcohol_relationships}
+# Create scatter plots with suitable ranges for x and y axes:
+# alcohol and density (-0.78)
+p1 <- ggplot(white_wine, aes(x = alcohol, y = density)) +
+  geom_point() +
+  geom_smooth(method = 'lm', color = '#EC9474') +
+  coord_cartesian(xlim = c(8, 14.2), ylim = c(0.987, 1.003))
+
+# alcohol and residual.sugar (-0.45)
+p2 <- ggplot(white_wine, aes(x = alcohol, y = residual.sugar)) +
+  geom_point()+
+  geom_smooth(method = 'lm', color = '#EC9474') +
+  coord_cartesian(xlim = c(8, 14.2), ylim = c(0, 31))
+
+# alcohol and total.sulfur.dioxide (-0.45)
+p3 <- ggplot(white_wine, aes(x = alcohol, y = total.sulfur.dioxide)) +
+  geom_point()+
+  geom_smooth(method = 'lm', color = '#EC9474') +
+  coord_cartesian(xlim = c(8, 14.2), ylim = c(0, 450))
+
+# alcohol and chlorides (-0.36)
+p4 <- ggplot(white_wine, aes(x = alcohol, y = chlorides)) +
+  geom_point()+
+  geom_smooth(method = 'lm', color = '#EC9474') +
+  coord_cartesian(xlim = c(8, 14.2), ylim = c(0, 0.34))
+
+# Use grid.arrange to illustrate scatter plots together.
+grid.arrange(p1, p2, p3, p4, ncol = 2)
+```
+<br/>
+*alcohol* has the strongest linear relationship with *quality* (positive relationship). These 4 scatter plots show the relationship between alcohol and *density*, *residual.sugar*, *total.sulfur.dioxide* and *chlorides* respectively, where an increase in the percent of alcohol shows a decrease in each of the other variables. These are the variables with the strongest correlation to alcohol.
+<br/>
+<br/>
+
+##### Density and its linear relationships:
+```{r echo=FALSE, message=FALSE, warning=FALSE, Scatter_plots_density_relationships}
+# Create scatter plots with suitable ranges for x and y axes:
+# density and residual.sugar (0.84)
+p5 <- ggplot(white_wine, aes(x = density, y = residual.sugar)) +
+  geom_point() +
+  geom_smooth(method = 'lm', color = '#EC9474') +
+  coord_cartesian(xlim = c(0.987, 1.003), ylim = c(0, 26))
+
+# density and total.sulfur.dioxide (0.53)
+p6 <- ggplot(white_wine, aes(x = density, y = total.sulfur.dioxide)) +
+  geom_point()+
+  geom_smooth(method = 'lm', color = '#EC9474') +
+  coord_cartesian(xlim = c(0.987, 1.003), ylim = c(0, 350))
+
+# density and alcohol (-0.78)
+p7 <- ggplot(white_wine, aes(x = density, y = alcohol)) +
+  geom_point()+
+  geom_smooth(method = 'lm', color = '#EC9474') +
+  coord_cartesian(xlim = c(0.987, 1.003), ylim = c(8, 15))
+
+# Use grid.arrange to illustrate scatter plots together.
+grid.arrange(p5, p6, p7, ncol = 2)
+```
+<br/>
+*density* is the second variable that has a linear relationship with *quality* (negative relationship). The graphs above illustrate the strongest relationship of density and other variables.
+<br/>
+The data set description explains that density is affected by the percent alcohol and sugar content in the wine. The first scatter plot shows the relationship between *residual.sugar* and density, where an increase in the amount of residual sugar shows an increase in the density of the wine. The third scatter plot shows that with an increase in the *alcohol* percent there is a decrease in the density of the wine. Lastly, the second graph shows that density also has a linear relationship with *total.sulfur.dioxide*, where density increases when total.sulfur.dioxide increases.
+<br/>
+<br/>
+
+# Bivariate Analysis
+
+### Talk about some of the relationships you observed in this part of the \
+investigation. How did the feature(s) of interest vary with other features in \
+the dataset?
+The correlation matrix showed that *quality* only had a linear relationship with two other variables. It has a weak positive relationship with *alcohol* (0.44) and a very weak negative relationship with *density* (-0.31). This means that with the increase in quality score, the percent alcohol in a wine also increases meanwhile the density of it decreases.
+<br/>
+<br/>
+Low quality wines with the score 3-4 have low levels of *free.sulfur.dioxide*, but the levels do not increase over the other quality scores, it may just be that there must be a certain minimum level of free sulfur dioxide in a wine for it to be rated higher. Higher quality wines have lower levels of *chlorides*, this might indicate that they are less salty in taste. Higher quality wines also have lower levels of *volatile.acidity*.
+
+### Did you observe any interesting relationships between the other features \
+(not the main feature(s) of interest)?
+*pH* and *fixed.acidity* has a weak negative relationship (-0.43), as the pH increase (gets more alkaline) the fixed.acidity decreases, which makes a lot of sense. *fixed.acidity* and *volatile.acidity* are not linearly related (-0.02), which I would have assumed.
+<br/>
+<br/>
+I specifically looked at the variables *alcohol* and *density* and how these are related to other variables because these were the two variables with the strongest relationship to *quality*. Alcohol is only negatively related to other variables with the strongest correlation to *density* (-0.78), *residual.sugar* (-0.45), *total.sulfur.dioxide* (-0.45) and *chlorides* (-0.36). Density is positively related to *residual.sugar* (0.84) and *total.sulfur.dioxide* (0.53) and negatively related to *alcohol* (-0.78).
+
+### What was the strongest relationship you found?
+The strongest relationship found between two variables is the positive relationship between *residual.sugar* and *density* with the correlation coefficient of 0.84.
+
+# Multivariate Plots Section
+
+##### Quality, alcohol and density:
+```{r echo=FALSE, message=FALSE, warning=FALSE, Quality_alcohol_density}
+ggplot(aes(x = alcohol, y = density, color = quality_cat),
+       data = white_wine) + 
+  geom_point(alpha = 0.5, size = 1, position = 'jitter') +
+  scale_color_brewer(type = 'div',
+    guide = guide_legend(title = 'quality', reverse = T,
+    override.aes = list(alpha = 1, size = 2))) +  
+  scale_x_continuous() +
+  scale_y_continuous(limits = c(0.987110, 1.003))
+```
+<br/>
+*quality* only had a linear relationship with two variables, *alcohol* (r = 0.44) and *density* (r = -0.31). Alcohol and density are also linearly related (r = -0.78) and the scatter plot above shows this relationship colored by quality to illustrate how they all relate. The graph nicely shows that the higher the alcohol percent and the lower the density of a wine, the higher the quality score.
+<br/>
+<br/>
+
+##### Variables with a positive relationship and quality:
+```{r echo=FALSE, message=FALSE, warning=FALSE, Quality_positive_relationships}
+p8 <- ggplot(aes(x = residual.sugar, y = density,
+                 color = quality_cat), data = white_wine) + 
+  geom_point(alpha = 0.5, size = 1, position = 'jitter') +
+  scale_color_brewer(type = 'div',
+    guide = guide_legend(title = 'quality', reverse = T,
+    override.aes = list(alpha = 1, size = 2))) +  
+  scale_x_continuous(limits = c(0.6, 25)) +
+  scale_y_continuous(limits = c(0.987110, 1.003))
+
+p9 <- ggplot(aes(x = free.sulfur.dioxide, y = total.sulfur.dioxide,
+                 color = quality_cat), data = white_wine) + 
+  geom_point(alpha = 0.5, size = 1, position = 'jitter') +
+  scale_color_brewer(type = 'div',
+    guide = guide_legend(title = 'quality', reverse = T,
+    override.aes = list(alpha = 1, size = 2))) +  
+  scale_x_continuous(limits = c(2, 150)) +
+  scale_y_continuous(limits = c(9, 300))
+
+p10 <- ggplot(aes(x = density, y = total.sulfur.dioxide,
+                  color = quality_cat), data = white_wine) + 
+  geom_point(alpha = 0.5, size = 1, position = 'jitter') +
+  scale_color_brewer(type = 'div',
+    guide = guide_legend(title = 'quality', reverse = T,
+    override.aes = list(alpha = 1, size = 2))) +  
+  scale_x_continuous(limits = c(0.987110, 1.003)) +
+  scale_y_continuous(limits = c(9, 300))
+
+p11 <- ggplot(aes(x = residual.sugar, y = total.sulfur.dioxide,
+                  color = quality_cat), data = white_wine) + 
+  geom_point(alpha = 0.5, size = 1, position = 'jitter') +
+  scale_color_brewer(type = 'div',
+    guide = guide_legend(title = 'quality', reverse = T,
+    override.aes = list(alpha = 1, size = 2))) +  
+  scale_x_continuous(limits = c(0.6, 25)) +
+  scale_y_continuous(limits = c(9, 300))
+
+grid.arrange(p8, p9, p10, p11, ncol = 2)
+```
+<br/>
+These graphs illustrate all positive linear relationships we could find in the correlation matrix in the bivariate plots section and here we have added quality as color to explore how the relationship between these variables relate to the quality of a wine. We can see a clear pattern for *density*, *residual.sugar* and *quality*, where the quality of a wine appears to be higher when density and residual sugar are lower. Quality also seems to be increasing for wines with lower *density* and *total.sulfur.dioxide*, even though the relationship between these three variables is a bit less obvious. The other graphs show some regions with higher concentrations of good and bad wines but not very clearly.
+<br/>
+<br/>
+
+##### Variables with a negative relationship and quality:
+```{r echo=FALSE, message=FALSE, warning=FALSE, Quality_negative_relationships}
+p12 <- ggplot(aes(x = alcohol, y = residual.sugar,
+                  color = quality_cat), data = white_wine) + 
+  geom_point(alpha = 0.5, size = 1, position = 'jitter') +
+  scale_color_brewer(type = 'div',
+    guide = guide_legend(title = 'quality', reverse = T,
+    override.aes = list(alpha = 1, size = 2))) +  
+  scale_x_continuous() +
+  scale_y_continuous(limits = c(0.6, 25))
+
+p13 <- ggplot(aes(x = alcohol, y = total.sulfur.dioxide,
+                  color = quality_cat), data = white_wine) + 
+  geom_point(alpha = 0.5, size = 1, position = 'jitter') +
+  scale_color_brewer(type = 'div',
+    guide = guide_legend(title = 'quality', reverse = T,
+    override.aes = list(alpha = 1, size = 2))) +  
+  scale_x_continuous() +
+  scale_y_continuous(limits = c(9, 300))
+
+p14 <- ggplot(aes(x = pH, y = fixed.acidity,
+                  color = quality_cat), data = white_wine) + 
+  geom_point(alpha = 0.5, size = 1, position = 'jitter') +
+  scale_color_brewer(type = 'div',
+    guide = guide_legend(title = 'quality', reverse = T,
+    override.aes = list(alpha = 1, size = 2))) +  
+  scale_x_continuous(limits = c(2.8, 3.82)) +
+  scale_y_continuous(limits = c(3.8, 12))
+
+p15 <- ggplot(aes(x = alcohol, y = chlorides,
+                  color = quality_cat), data = white_wine) + 
+  geom_point(alpha = 0.5, size = 1, position = 'jitter') +
+  scale_color_brewer(type = 'div',
+    guide = guide_legend(title = 'quality', reverse = T,
+    override.aes = list(alpha = 1, size = 2))) +  
+  scale_x_continuous() +
+  scale_y_continuous(limits = c(0.009, 0.346))
+
+grid.arrange(p12, p13, p14, p15, ncol = 2)
+```
+<br/>
+Here we see graphs of all negative relationships we found in the correlation matrix and how these relationships relate to the quality of a wine. These relationships do not as clearly explain the effects on quality. A wine with higher alcohol percent appears to have a higher quality score in all graphs, but the spread for the second variable is much greater in terms of quality and this relationship does not seem to explain the quality of a wine very well. There is some indication that lower *residual.sugar* and higher *alcohol* and slighly less *chlorides* and higher *alcohol* in a wine leads to an increase in the quality score. The relationship between *fixed.acidity* and *pH* does not seems to explain the quality of a wine much at all.
+<br/>
+<br/>
+
+##### Creating a multiple linear regression model:
+```{r echo=FALSE, message=FALSE, warning=FALSE, Multiple_regression_model}
+# Fit model with quality as the outcome variable and all other as predictor variables:
+fit_1 <- lm(quality ~ fixed.acidity + volatile.acidity + citric.acid +
+            residual.sugar + chlorides + free.sulfur.dioxide +
+            total.sulfur.dioxide + density + pH + sulphates + alcohol,
+          data = white_wine)
+
+# Show model results:
+summary(fit_1)
+```
+<br/>
+The table shows a summary of the results of a model for predicting the quality of a white wine using all other variables as predictor variables. The p-value of the F-statistic is < 2.2e-16, which means it is highly significant and that at least one of the predictor variables is significantly related to the outcome variable.
+<br/>
+<br/>
+We can also see statistics for each variable and it's relationship to quality. The P value (Pr(>|t|)) indicates whether a variable has statistically significant predictive capability. It shows the probability of the coefficient being attributed to random variation. A P value of less than 5% indicates significance. Variables *citric.acid*, *chlorides* and *total.sulfur.dioxide* are not significant and can be removed from the model.
+<br/>
+<br/>
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, Multiple_regression_model_2}
+# Only include significant predictor variables in model:
+fit_2 <- lm(quality ~ fixed.acidity + volatile.acidity + residual.sugar +
+            free.sulfur.dioxide + density + pH + sulphates + alcohol,
+          data = white_wine)
+
+# Show model results:
+summary(fit_2)
+```
+<br/>
+To see how accurate the model is we can look at the R-squared value. An R-squared value close to 1 indicates that the model explains a large portion of the variance in the outcome variable. However, R-squared will always increase when more variables are added to the model even if those variables are only weakly associated with the outcome. We should look at adjusted R-squared instead which takes into account the number of predictor variables in the model.
+<br/>
+<br/>
+The adjusted R-squared value for the model is 0.2806, practically the same result as for the previous model with all variables included (0.2803). This means that 28% of the variance in the measure of quality can be predicted by the variables included, which is very low and doesn't make the model accurate enough, but at least removing some predictor variables made the model just as strong and we can create the same accuracy with fewer data points about a wine available.
+<br/>
+<br/>
+
+# Multivariate Analysis
+
+### Talk about some of the relationships you observed in this part of the \
+investigation. Were there features that strengthened each other in terms of \
+looking at your feature(s) of interest?
+I looked at alcohol and density and how the relationship between these variables could explain the quality score of a wine. These were the only two variables that had a direct linear relationship with quality and as expected they quite nicely explain the quality of a wine - the higher the alcohol percent and the lower the density of a wine, the higher the quality score. The graph illustrating the relationship between density, residual sugar and quality also nicely shows how the quality score increases as both density and residual sugar in a wine gets lower.
+
+### Were there any interesting or surprising interactions between features?
+I think the most interesting thing I discovered is that with so many descriptive variables of wine at hand, only 28% of the variance in the measure of quality can be predicted by the variables included in the multiple linear regression model I created. In terms of the multivariate graphs plotted, it is surprising to see that so few relationships between variables seem to explain the quality score of a wine.
+
+### OPTIONAL: Did you create any models with your dataset? Discuss the \
+strengths and limitations of your model.
+I created a multiple linear regression model for predicting the quality of a wine by including all variables quantifying the chemical properties of the wine to understand which variables are significant to predicting the quality score. I refined this model by removing variables that did not have significant predictive capability of quality. This made the model just as strong as before in predicting quality with a very similar adjusted R-squared value as to the first model, but with fewer data points about a wine needed as input.
+<br/>
+<br/>
+As mentioned in the section above, the model is not very strong in predicting the quality of a wine even though there are so many variables on the properties of a wine available. This might be because the bulk of wines in the data set are of average quality, there are no poor wines with a quality score of 1 or excellent wines with a quality score of 10 available so the model will not be able to predict these scores very well. The model might also be weak in predicting quality because there are non-linear relationships between quality and other variables, which this model cannot take into account very well. The model is also not very good at predicting the quality of a white wine since only wines of the kind Vinho Verde are included in the data set and the model could only represent this kind of wine and not white wines in general.
+
+------
+
+# Final Plots and Summary
+
+### Plot One
+```{r echo=FALSE, message=FALSE, warning=FALSE, Plot_One}
+p16 <- ggplot(white_wine, aes(x = factor(quality_cat), y = alcohol)) + 
+  geom_boxplot(fill = I('#5FA5CC')) +
+  geom_jitter(position = position_jitter(0.3), alpha = 1/10) +
+  geom_line(aes(group = 1),
+            stat = "summary",
+            fun.y = median,
+            color = "#EC9474",
+            size = 1)
+
+p16 + labs(title = "Alcohol percent and Quality", x = "Quality Score",
+           y ="Alcohol (% by volume)")
+```
+
+### Description One
+This graph shows the strongest relationship that quality has to another variable, alcohol. The boxplots show the quantile boundaries and the median values and the many dots show the number of observations and how they are distributed within each quality score. Most wines are of quality score 5 or 6 and few have a score of 3-4 or 8-9. The graph nicely shows how big of an impact alcohol has on quality and the general trend in this relationship is clearly illustrated by the orange line representing the median alcohol percent per quality score - higher quality wines have a higher alcohol percent.
+
+### Plot Two
+```{r echo=FALSE, message=FALSE, warning=FALSE, Plot_Two}
+p17 <- ggplot(aes(x = alcohol, y = density, color = quality_cat),
+       data = white_wine) + 
+  geom_point(alpha = 0.5, size = 1, position = 'jitter') +
+  scale_color_brewer(type = 'div',
+    guide = guide_legend(title = 'Quality Score', reverse = T,
+    override.aes = list(alpha = 1, size = 2))) +  
+  scale_x_continuous() +
+  scale_y_continuous(limits = c(0.987110, 1.003))
+
+p17 + labs(title = "Alcohol percent vs Density and Quality",
+           x = "Alcohol (% by volume)",
+           y ="Density (g / cm^3)")
+```
+
+### Description Two
+Quality only has a linear relationship with two variables, alcohol and density, which are also linearly related and this scatter plot nicely shows how all these variables relate. The relationship between alcohol and density explains the quality score of a wine very well and this graphs illustrates this by the negative slope of the scatter plot and the color of the dots. The higher the alcohol percent and the lower the density of a wine, the higher the quality score will be.
+
+### Plot Three
+```{r echo=FALSE, message=FALSE, warning=FALSE, Plot_Three}
+p18 <- ggplot(aes(x = residual.sugar, y = density,
+                 color = quality_cat), data = white_wine) + 
+  geom_point(alpha = 0.5, size = 1, position = 'jitter') +
+  scale_color_brewer(type = 'div',
+    guide = guide_legend(title = 'Quality Score', reverse = T,
+    override.aes = list(alpha = 1, size = 2))) +  
+  scale_x_continuous(limits = c(0.6, 25)) +
+  scale_y_continuous(limits = c(0.987110, 1.003))
+
+p18 + labs(title = "Residual Sugar vs Density and Quality",
+           x = "Residual sugar (g / dm^3)",
+           y ="Density (g / cm^3)")
+```
+
+### Description Three
+This last graph illustrates the strongest relationship between any two variables in the data set, density and residual sugar. Quality has been added to this to illustrate how this relationship can explain the quality score of a wine. The positive slope of the scatter plot and the color of the dots clearly visualize how the quality score of a wine increases as the density and residual sugar in a wine gets lower.
+
+------
+
+# Reflection
+
+I think the data set has been easy to work with, it is a tidy data set which has already been cleaned and structured and has no missing data and I could start with the exploration straight away. It was fun to use real data for this project and I have leared a lot about the chemical properties of a wine. The text description of the data set was also very helpful in deciding which variables would be useful to further explore, I could understand from this description how a chemical property could affect the taste or smell of a wine. There was no information on the amount of tannin in each wine, which I mentioned further up affects the taste of a wine. Tannins add balance and structure to a wine and it would have been interesting to see how much this chemical property affect the quality score of a wine. 
+
+Alcohol content seems to be the number one chemical property that influences the quality of a wine, followed by its density and residual sugar content. Higher alcohol percent, which also means a lower density of the wine and less residual sugar (less sweet) appears to be characteristic of a higher quality wine. It also seems higher quality wines have lower amounts of chlorides, which could mean they are slighlty less salty. It was surprising to see that there was no linear realtionship between fixed and volatile acidity, which I would have assumed beforehand.
+
+The data set had enough observations in terms of quantity to make the analysis but most of the wines were of average quality and we have no really bad or really excellent wines present, which makes it very hard to predict the quality of a wine with the data at hand. More observations in the lower and upper ranges of quality score would useful in creating prediction models about which chemical properties that influence the quality of a wine. It was also a bit challenging to see the trends in the data by only looking at the graphs because there could be small changes in the data that are hard to see, the correlation matrix and summary tables really helped with understanding this.
+
+I also think that it would be even more insteresting to use a data set that represents different kinds of white wine, this data set only includes observations of the wine Vihno Verde and our analysis will only represent this kind of wine and not white wine in greneral. In future this would be interesting to look into, how these chemical properties affect the quality of white wine in a broader sense.
+
