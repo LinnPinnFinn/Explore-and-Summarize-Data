@@ -10,7 +10,13 @@ Reguired installations:
 - RStudio
 
 Required packages:
-- ()
+- ggplot2
+- knitr
+- dplyr
+- reshape2
+- gridExtra
+- corrplot
+- RColorBrewer
 
 ## Files
 - **'WhiteWineQualityExplorationByLinnOlsson.Rmd'**: R Markdown file containing the analysis
